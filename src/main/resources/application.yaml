@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: Edudocs
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/edudocs
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: edudocs-pool
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: public
+        jdbc:
+          time_zone: UTC
+    open-in-view: false

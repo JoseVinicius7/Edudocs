@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface SchoolRepository extends JpaRepository<SchoolEntity, Long> {
     
     // Busca escola pelo nome
-    Optional<SchoolEntity> findByName(String name);
+    List<SchoolEntity> findByName(String name);
     
     // Busca escolas por zona
     List<SchoolEntity> findByZone(String zone);

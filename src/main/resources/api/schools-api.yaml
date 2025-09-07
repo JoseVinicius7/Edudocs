@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: Edudocs - Schools API
+  version: 1.0.0
+  description: API para gerenciamento de escolas
+servers:
+  - url: / # relative to server context
+paths:
+  /api/schools:
+    post:
+      operationId: create
+      summary: Cria uma nova escola
+      tags: [School]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolRequest'
+      responses:
+        '201':
+          description: Escola criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+    get:
+      operationId: findAll
+      summary: Lista todas as escolas
+      tags: [School]
+      responses:
+        '200':
+          description: Lista de escolas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolResponse'
+  /api/schools/{id}:
+    get:
+      operationId: findById
+      summary: Busca escola por ID
+      tags: [School]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Escola encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '404':
+          description: Não encontrada
+    put:
+      operationId: update
+      summary: Atualiza uma escola
+      tags: [School]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolRequest'
+      responses:
+        '200':
+          description: Escola atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '404':
+          description: Não encontrada
+    delete:
+      operationId: delete
+      summary: Remove uma escola
+      tags: [School]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Removida com sucesso
+  /api/schools/zone/{zone}:
+    get:
+      operationId: findByZone
+      summary: Lista escolas por zona
+      tags: [School]
+      parameters:
+        - in: path
+          name: zone
+          required: true
+          schema:
+            type: string
+            enum: [URBANA, RURAL]
+      responses:
+        '200':
+          description: Lista de escolas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolResponse'
+  /api/schools/search:
+    get:
+      operationId: findByName
+      summary: Busca escolas por nome
+      tags: [School]
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de escolas encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchoolResponse'
+        '404':
+          description: Não encontrada
+
+components:
+  schemas:
+    Address:
+      type: object
+      description: "Endereço da escola (mapeado para AddressEntity)"
+      properties:
+        id:
+          type: integer
+          format: int64
+        street:
+          type: string
+        number:
+          type: string
+        complement:
+          type: string
+        neighborhood:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+
+
+    SchoolRequest:
+      type: object
+      description: "Mapeado para a entidade SchoolEntity existente"
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        zone:
+          type: string
+          description: "Zona da escola (ex.: URBANA, RURAL)"
+          enum: [URBANA, RURAL]
+        address:
+          $ref: '#/components/schemas/Address'
+      required:
+        - name
+        - zone
+
+    SchoolResponse:
+      type: object
+      description: "Mapeado para a entidade SchoolEntity existente"
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          maxLength: 255
+        zone:
+          type: string
+          description: "Zona da escola (ex.: URBANA, RURAL)"
+          enum: [URBANA, RURAL]
+        address:
+          $ref: '#/components/schemas/Address'

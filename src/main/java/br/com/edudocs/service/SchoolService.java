@@ -1,5 +1,7 @@
 package br.com.edudocs.service;
 
+import br.com.edudocs.api.model.SchoolRequestDTO;
+import br.com.edudocs.api.model.SchoolResponseDTO;
 import br.com.edudocs.entity.SchoolEntity;
 import java.util.List;
 import java.util.Optional;
@@ -11,20 +13,20 @@ public interface SchoolService {
      * @param school entidade escola a ser criada
      * @return escola criada
      */
-    SchoolEntity createSchool(SchoolEntity school);
+    SchoolResponseDTO createSchool(SchoolRequestDTO school);
     
     /**
      * Busca uma escola pelo ID
      * @param id identificador da escola
      * @return Optional contendo a escola se encontrada
      */
-    Optional<SchoolEntity> findSchoolById(Long id);
+    Optional<SchoolResponseDTO> findSchoolById(Long id);
     
     /**
      * Lista todas as escolas
      * @return lista de escolas
      */
-    List<SchoolEntity> findAllSchools();
+    List<SchoolResponseDTO> findAllSchools();
     
     /**
      * Atualiza uma escola existente
@@ -32,7 +34,7 @@ public interface SchoolService {
      * @param school dados atualizados da escola
      * @return escola atualizada
      */
-    SchoolEntity updateSchool(Long id, SchoolEntity school);
+    SchoolResponseDTO updateSchool(Long id, SchoolRequestDTO school);
     
     /**
      * Remove uma escola
@@ -45,12 +47,12 @@ public interface SchoolService {
      * @param zone zona da escola
      * @return lista de escolas na zona especificada
      */
-    List<SchoolEntity> findSchoolsByZone(String zone);
+    List<SchoolResponseDTO> findSchoolsByZone(String zone);
     
     /**
      * Busca escola pelo nome
      * @param name nome da escola
      * @return Optional contendo a escola se encontrada
      */
-    Optional<SchoolEntity> findSchoolByName(String name);
+    List<SchoolResponseDTO> findSchoolByName(String name);
 }

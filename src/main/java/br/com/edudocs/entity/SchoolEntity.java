@@ -21,5 +21,5 @@ public class SchoolEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_school_address"))
-    private Address address;
+    private AddressEntity address;
 }
