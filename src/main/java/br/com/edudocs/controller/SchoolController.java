@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -20,12 +23,12 @@ import java.util.List;
  * <p>Funcionalidades:</p>
  * <ul>
  *   <li>Criação de novas escolas.</li>
- *   <li>Busca por ID, nome ou zona.</li>
+ *   <li>Busca por ‘ID’, nome ou zona.</li>
  *   <li>Atualização e exclusão de escolas.</li>
  *   <li>Listagem de todas as escolas.</li>
  * </ul>
  *
- * <p>Padronização de logs:</p>
+ * <p>Padronização de ‘logs’:</p>
  * <ul>
  *   <li>Início e fim do metodo com medição de tempo.</li>
  *   <li>Request: campos relevantes do payload ou parâmetros.</li>
@@ -41,7 +44,7 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
     private final SchoolService schoolService;
 
     /**
-     * Cria uma nova escola.
+     * Cria uma escola.
      *
      * <p>Regras:</p>
      * <ul>
@@ -53,7 +56,7 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} contendo a escola criada
      */
     @Override
-    public ResponseEntity<SchoolResponseDTO> create(@Valid SchoolRequestDTO school) {
+    public ResponseEntity<SchoolResponseDTO> create(@Valid @RequestBody SchoolRequestDTO school) {
         String method = "SchoolController.create";
 
         return logExecution(method, () -> {
@@ -66,8 +69,9 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
         });
     }
 
+
     /**
-     * Busca uma escola pelo seu ID.
+     * Busca uma escola pelo seu ‘ID’.
      *
      * <p>Regras:</p>
      * <ul>
@@ -79,7 +83,7 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} com a escola encontrada ou status 404
      */
     @Override
-    public ResponseEntity<SchoolResponseDTO> findById(Long id) {
+    public ResponseEntity<SchoolResponseDTO> findById(@PathVariable("id") Long id) {
         String method = "SchoolController.findById";
 
         return logExecution(method, () -> {
@@ -134,25 +138,21 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} com os dados atualizados ou status 404
      */
     @Override
-    public ResponseEntity<SchoolResponseDTO> update(Long id, @Valid SchoolRequestDTO school) {
+    public ResponseEntity<SchoolResponseDTO> update(@PathVariable("id") Long id, @Valid @RequestBody SchoolRequestDTO school) {
         String method = "SchoolController.update";
 
         return logExecution(method, () -> {
             logRequest(method, String.format("id=%d - name=%s - zone=%s", id, school.getName(), school.getZone()));
 
-            try {
-                SchoolResponseDTO updated = schoolService.updateSchool(id, school);
-                logResponse(method, HttpStatus.OK, "id=" + updated.getId());
-                return ResponseEntity.ok(updated);
-            } catch (RuntimeException ex) {
-                logResponse(method, HttpStatus.NOT_FOUND, "reason=" + ex.getClass().getSimpleName());
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
+            // Deixa exceções propagarem para o GlobalExceptionHandler (ex.: 404)
+            SchoolResponseDTO updated = schoolService.updateSchool(id, school);
+            logResponse(method, HttpStatus.OK, "id=" + updated.getId());
+            return ResponseEntity.ok(updated);
         });
     }
 
     /**
-     * Remove uma escola pelo seu ID.
+     * Remove uma escola pelo seu ‘ID’.
      *
      * <p>Regras:</p>
      * <ul>
@@ -164,7 +164,7 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} sem conteúdo em caso de sucesso
      */
     @Override
-    public ResponseEntity<Void> delete(Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         String method = "SchoolController.delete";
 
         return logExecution(method, () -> {
@@ -190,7 +190,7 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} contendo a lista de escolas encontradas
      */
     @Override
-    public ResponseEntity<List<SchoolResponseDTO>> findByZone(String zone) {
+    public ResponseEntity<List<SchoolResponseDTO>> findByZone(@PathVariable("zone") String zone) {
         String method = "SchoolController.findByZone";
 
         return logExecution(method, () -> {
@@ -215,15 +215,18 @@ public class SchoolController extends BaseControllerLogger implements SchoolApi 
      * @return {@link ResponseEntity} com a escola encontrada ou status 404
      */
     @Override
-    public ResponseEntity<List<SchoolResponseDTO>> findByName(String name) {
+    public ResponseEntity<List<SchoolResponseDTO>> findByName(@RequestParam("name") String name) {
         String method = "SchoolController.findByName";
 
         return logExecution(method, () -> {
             logRequest(method, "name=" + name);
 
             List<SchoolResponseDTO> schools = schoolService.findSchoolByName(name);
-            logResponse(method, schools.isEmpty() ? HttpStatus.NOT_FOUND : HttpStatus.OK,
-                    schools.isEmpty() ? "no entity found" : "total=" + schools.size());
+            if (schools.isEmpty()) {
+                logResponse(method, HttpStatus.NOT_FOUND, "no entity found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            logResponse(method, HttpStatus.OK, "total=" + schools.size());
             return ResponseEntity.ok(schools);
         });
     }

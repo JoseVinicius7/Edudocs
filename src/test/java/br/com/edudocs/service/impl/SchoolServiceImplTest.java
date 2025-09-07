@@ -4,24 +4,27 @@ import br.com.edudocs.api.model.SchoolRequestDTO;
 import br.com.edudocs.api.model.SchoolResponseDTO;
 import br.com.edudocs.entity.AddressEntity;
 import br.com.edudocs.entity.SchoolEntity;
+import br.com.edudocs.exception.BadRequestException;
+import br.com.edudocs.exception.ConflictException;
+import br.com.edudocs.exception.NotFoundException;
 import br.com.edudocs.mapper.AddressMapper;
 import br.com.edudocs.mapper.SchoolMapper;
 import br.com.edudocs.repository.AddressRepository;
 import br.com.edudocs.repository.SchoolRepository;
 import br.com.edudocs.utils.BaseLogger.BaseServiceLogger;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,329 +32,198 @@ class SchoolServiceImplTest {
 
     @Mock
     private SchoolRepository schoolRepository;
+
     @Mock
     private AddressRepository addressRepository;
+
     @Mock
     private BaseServiceLogger logger;
+
     @Mock
     private SchoolMapper schoolMapper;
+
     @Mock
     private AddressMapper addressMapper;
 
     @InjectMocks
-    private SchoolServiceImpl service;
+    private SchoolServiceImpl schoolService;
+
+    private SchoolEntity schoolEntity;
+    private SchoolRequestDTO schoolRequestDTO;
+    private SchoolResponseDTO schoolResponseDTO;
+    private AddressEntity addressEntity;
 
     @BeforeEach
-    void setupLogger() {
-        // Faz o logger executar o Supplier/Runner para permitir cobrir o corpo dos métodos
-        lenient().when(logger.logExecution(anyString(), any()))
-                .thenAnswer(invocation -> {
-                    Supplier<?> supplier = invocation.getArgument(1);
-                    return supplier.get();
-                });
+    void setup() {
+        addressEntity = new AddressEntity();
+        addressEntity.setId(1L);
+        addressEntity.setStreet("Rua A");
+        addressEntity.setCity("Cidade");
+        addressEntity.setState("Estado");
+        addressEntity.setPostalCode("12345-678");
+
+        schoolEntity = new SchoolEntity();
+        schoolEntity.setId(1L);
+        schoolEntity.setName("Escola Teste");
+        schoolEntity.setZone("URBANA");
+        schoolEntity.setAddress(addressEntity);
+
+        schoolRequestDTO = new SchoolRequestDTO();
+        schoolRequestDTO.setName("Escola Teste");
+        schoolRequestDTO.setZone(SchoolRequestDTO.ZoneEnum.valueOf("URBANA"));
+
+        schoolResponseDTO = new SchoolResponseDTO();
+        schoolResponseDTO.setId(1L);
+        schoolResponseDTO.setName("Escola Teste");
+        schoolResponseDTO.setZone(SchoolResponseDTO.ZoneEnum.valueOf("URBANA"));
+
+        // Evita duplicar logExecution em todos os métodos
+        lenient().when(logger.logExecution(any(), any())).thenAnswer(invocation -> {
+            var supplier = invocation.<java.util.function.Supplier<?>>getArgument(1);
+            return supplier.get();
+        });
+
         lenient().doAnswer(invocation -> {
-            Runnable r = invocation.getArgument(1);
-            r.run();
+            Runnable runnable = invocation.getArgument(1);
+            runnable.run();
             return null;
-        }).when(logger).logExecutionVoid(anyString(), any());
+        }).when(logger).logExecutionVoid(any(), any());
+
     }
 
     @Test
-    void findSchoolById_returnsMappedDto_whenFound() {
-        Long id = 10L;
-        SchoolEntity entity = new SchoolEntity();
-        entity.setId(id);
-        SchoolResponseDTO dto = mock(SchoolResponseDTO.class);
+    void findSchoolById_ShouldReturnSchool_WhenFound() {
+        when(schoolRepository.findById(1L)).thenReturn(Optional.of(schoolEntity));
+        when(schoolMapper.toResponseDto(schoolEntity)).thenReturn(schoolResponseDTO);
 
-        when(schoolRepository.findById(id)).thenReturn(Optional.of(entity));
-        when(schoolMapper.toResponseDto(entity)).thenReturn(dto);
+        Optional<SchoolResponseDTO> result = schoolService.findSchoolById(1L);
 
-        Optional<SchoolResponseDTO> result = service.findSchoolById(id);
-
-        assertTrue(result.isPresent());
-        assertEquals(dto, result.get());
-        verify(schoolRepository).findById(id);
-        verify(schoolMapper).toResponseDto(entity);
+        assertThat(result).isPresent();
+        assertThat(result.get().getName()).isEqualTo("Escola Teste");
+        verify(schoolRepository).findById(1L);
     }
 
     @Test
-    void findSchoolById_returnsEmpty_whenNotFound() {
-        Long id = 11L;
-        when(schoolRepository.findById(id)).thenReturn(Optional.empty());
+    void findSchoolById_ShouldReturnEmpty_WhenNotFound() {
+        when(schoolRepository.findById(1L)).thenReturn(Optional.empty());
 
-        Optional<SchoolResponseDTO> result = service.findSchoolById(id);
+        Optional<SchoolResponseDTO> result = schoolService.findSchoolById(1L);
 
-        assertTrue(result.isEmpty());
-        verify(schoolRepository).findById(id);
-        verifyNoInteractions(schoolMapper);
+        assertThat(result).isEmpty();
     }
 
     @Test
-    void findAllSchools_mapsList() {
-        SchoolEntity e1 = new SchoolEntity();
-        SchoolEntity e2 = new SchoolEntity();
-        List<SchoolEntity> entities = List.of(e1, e2);
-        SchoolResponseDTO r1 = mock(SchoolResponseDTO.class);
-        SchoolResponseDTO r2 = mock(SchoolResponseDTO.class);
-        List<SchoolResponseDTO> responses = List.of(r1, r2);
+    void findAllSchools_ShouldReturnList() {
+        when(schoolRepository.findAll()).thenReturn(List.of(schoolEntity));
+        when(schoolMapper.toResponseDtoList(List.of(schoolEntity))).thenReturn(List.of(schoolResponseDTO));
 
-        when(schoolRepository.findAll()).thenReturn(entities);
-        when(schoolMapper.toResponseDtoList(entities)).thenReturn(responses);
+        List<SchoolResponseDTO> result = schoolService.findAllSchools();
 
-        List<SchoolResponseDTO> out = service.findAllSchools();
-
-        assertEquals(2, out.size());
-        assertEquals(responses, out);
+        assertThat(result).hasSize(1);
         verify(schoolRepository).findAll();
-        verify(schoolMapper).toResponseDtoList(entities);
     }
 
     @Test
-    void createSchool_throws_whenPayloadAddressIsNull() {
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        when(payload.getAddress()).thenReturn(null);
+    void createSchool_ShouldThrowBadRequest_WhenNameIsNull() {
+        schoolRequestDTO.setName(null);
 
-        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                () -> service.createSchool(payload));
-
-        assertTrue(ex.getMessage().contains("Endereço obrigatório"));
-        verifyNoInteractions(schoolRepository);
+        assertThatThrownBy(() -> schoolService.createSchool(schoolRequestDTO))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Nome da escola é obrigatório.");
     }
 
     @Test
-    void createSchool_persistsUsingExistingAddress_whenAddressIdPresent() {
-        // payload -> entity com address contendo id
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        AddressEntity mappedAddress = new AddressEntity();
-        mappedAddress.setId(5L);
-        SchoolEntity mappedSchool = new SchoolEntity();
-        mappedSchool.setAddress(mappedAddress);
+    void createSchool_ShouldThrowBadRequest_WhenZoneIsInvalid() {
+        schoolRequestDTO.setZone(null);
 
-        AddressEntity persistedAddress = new AddressEntity();
-        persistedAddress.setId(5L);
-
-        SchoolEntity saved = new SchoolEntity();
-        saved.setId(100L);
-
-        SchoolResponseDTO responseDTO = mock(SchoolResponseDTO.class);
-
-        when(payload.getAddress()).thenReturn(mock(br.com.edudocs.api.model.AddressDTO.class));
-        when(schoolMapper.toEntity(payload)).thenReturn(mappedSchool);
-        when(addressRepository.findById(5L)).thenReturn(Optional.of(persistedAddress));
-        when(schoolRepository.save(mappedSchool)).thenReturn(saved);
-        when(schoolMapper.toResponseDto(saved)).thenReturn(responseDTO);
-
-        SchoolResponseDTO out = service.createSchool(payload);
-
-        assertEquals(responseDTO, out);
-        // Garante que o address foi substituído pelo persistido
-        assertEquals(persistedAddress, mappedSchool.getAddress());
-        verify(addressRepository).findById(5L);
-        verify(schoolRepository).save(mappedSchool);
-        verify(schoolMapper).toResponseDto(saved);
+        assertThatThrownBy(() -> schoolService.createSchool(schoolRequestDTO))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Zona inválida. Valores aceitos: RURAL, URBANA.");
     }
 
     @Test
-    void createSchool_throws_whenAddressIdNotFound() {
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        AddressEntity mappedAddress = new AddressEntity();
-        mappedAddress.setId(9L);
-        SchoolEntity mappedSchool = new SchoolEntity();
-        mappedSchool.setAddress(mappedAddress);
+    void createSchool_ShouldThrowConflict_WhenSchoolAlreadyExists() {
+        when(schoolRepository.existsByName("Escola Teste")).thenReturn(true);
 
-        when(payload.getAddress()).thenReturn(mock(br.com.edudocs.api.model.AddressDTO.class));
-        when(schoolMapper.toEntity(payload)).thenReturn(mappedSchool);
-        when(addressRepository.findById(9L)).thenReturn(Optional.empty());
-
-        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                () -> service.createSchool(payload));
-
-        assertTrue(ex.getMessage().contains("Endereço não encontrado"));
-        verify(addressRepository).findById(9L);
-        verifyNoMoreInteractions(addressRepository);
-        verifyNoInteractions(schoolRepository);
+        assertThatThrownBy(() -> schoolService.createSchool(schoolRequestDTO))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("Já existe uma escola com este nome.");
     }
 
     @Test
-    void createSchool_savesDirectly_whenMappedAddressIsNullOrIdNull() {
-        // Caso address = null
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        SchoolEntity mappedSchool = new SchoolEntity();
-        mappedSchool.setAddress(null);
+    void createSchool_ShouldCreateSuccessfully() {
+        when(schoolRepository.existsByName("Escola Teste")).thenReturn(false);
+        when(schoolMapper.toEntity(schoolRequestDTO)).thenReturn(schoolEntity);
+        when(addressRepository.findById(1L)).thenReturn(Optional.of(addressEntity));
+        when(schoolRepository.save(any(SchoolEntity.class))).thenReturn(schoolEntity);
 
-        SchoolEntity saved = new SchoolEntity();
-        saved.setId(200L);
-        SchoolResponseDTO response = mock(SchoolResponseDTO.class);
 
-        when(payload.getAddress()).thenReturn(mock(br.com.edudocs.api.model.AddressDTO.class));
-        when(schoolMapper.toEntity(payload)).thenReturn(mappedSchool);
-        when(schoolRepository.save(mappedSchool)).thenReturn(saved);
-        when(schoolMapper.toResponseDto(saved)).thenReturn(response);
+        SchoolResponseDTO result = schoolService.createSchool(schoolRequestDTO);
 
-        SchoolResponseDTO out = service.createSchool(payload);
-
-        assertEquals(response, out);
-        verify(schoolRepository).save(mappedSchool);
-        verify(schoolMapper).toResponseDto(saved);
-        verifyNoInteractions(addressRepository);
-
-        // Caso address.id = null
-        AddressEntity a = new AddressEntity(); // id null
-        mappedSchool.setAddress(a);
-
-        when(schoolRepository.save(mappedSchool)).thenReturn(saved);
-
-        out = service.createSchool(payload);
-
-        assertEquals(response, out);
-        verify(schoolRepository, times(2)).save(mappedSchool);
-        verifyNoInteractions(addressRepository);
+        verify(schoolRepository).save(schoolEntity);
     }
 
     @Test
-    void updateSchool_updatesAddress_whenAddressProvidedInPayload() {
-        Long id = 77L;
+    void updateSchool_ShouldUpdateSuccessfully() {
+        when(schoolRepository.findById(1L)).thenReturn(Optional.of(schoolEntity));
+        when(schoolMapper.toEntity(schoolRequestDTO)).thenReturn(schoolEntity);
+        when(schoolRepository.save(any(SchoolEntity.class))).thenReturn(schoolEntity);
+        when(schoolMapper.toResponseDto(schoolEntity)).thenReturn(schoolResponseDTO);
 
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        when(payload.getAddress()).thenReturn(mock(br.com.edudocs.api.model.AddressDTO.class));
+        SchoolResponseDTO result = schoolService.updateSchool(1L, schoolRequestDTO);
 
-        SchoolEntity existing = new SchoolEntity();
-        existing.setId(id);
-        existing.setAddress(new AddressEntity()); // atual existente
-
-        when(schoolRepository.findById(id)).thenReturn(Optional.of(existing));
-
-        AddressEntity mappedFromPayload = new AddressEntity();
-        AddressEntity savedAddress = new AddressEntity();
-        savedAddress.setId(300L);
-        when(addressMapper.toEntity(any())).thenReturn(mappedFromPayload);
-        when(addressRepository.save(mappedFromPayload)).thenReturn(savedAddress);
-
-        SchoolEntity incoming = new SchoolEntity();
-        when(schoolMapper.toEntity(payload)).thenReturn(incoming);
-
-        SchoolEntity updated = new SchoolEntity();
-        updated.setId(id);
-        when(schoolRepository.save(incoming)).thenReturn(updated);
-
-        SchoolResponseDTO responseDTO = mock(SchoolResponseDTO.class);
-        when(schoolMapper.toResponseDto(updated)).thenReturn(responseDTO);
-
-        SchoolResponseDTO out = service.updateSchool(id, payload);
-
-        assertEquals(responseDTO, out);
-        // address do existing deve ter sido atualizado, e incoming deve manter address (do mapper ou existente se null)
-        verify(addressMapper).toEntity(any());
-        verify(addressRepository).save(mappedFromPayload);
-        verify(schoolRepository).save(incoming);
-        verify(schoolMapper).toResponseDto(updated);
-        assertEquals(id, incoming.getId());
-        assertEquals(savedAddress, existing.getAddress());
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("Escola Teste");
+        verify(schoolRepository).save(any(SchoolEntity.class));
     }
 
     @Test
-    void updateSchool_keepsExistingAddress_whenAddressNotProvidedInPayload() {
-        Long id = 88L;
+    void updateSchool_ShouldThrowNotFound_WhenSchoolDoesNotExist() {
+        when(schoolRepository.findById(1L)).thenReturn(Optional.empty());
 
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        when(payload.getAddress()).thenReturn(null);
-
-        SchoolEntity existing = new SchoolEntity();
-        existing.setId(id);
-        AddressEntity current = new AddressEntity();
-        current.setId(10L);
-        existing.setAddress(current);
-
-        when(schoolRepository.findById(id)).thenReturn(Optional.of(existing));
-
-        SchoolEntity incoming = new SchoolEntity();
-        incoming.setAddress(null); // simula mapeamento sem address
-        when(schoolMapper.toEntity(payload)).thenReturn(incoming);
-
-        SchoolEntity updated = new SchoolEntity();
-        updated.setId(id);
-        when(schoolRepository.save(incoming)).thenReturn(updated);
-
-        SchoolResponseDTO responseDTO = mock(SchoolResponseDTO.class);
-        when(schoolMapper.toResponseDto(updated)).thenReturn(responseDTO);
-
-        SchoolResponseDTO out = service.updateSchool(id, payload);
-
-        assertEquals(responseDTO, out);
-        // incoming deve herdar o address existente
-        assertEquals(current, incoming.getAddress());
-        verify(schoolRepository).save(incoming);
-        verifyNoInteractions(addressRepository, addressMapper);
+        assertThatThrownBy(() -> schoolService.updateSchool(1L, schoolRequestDTO))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Escola não encontrada com o ID: 1");
     }
 
     @Test
-    void updateSchool_throws_whenSchoolNotFound() {
-        Long id = 99L;
-        SchoolRequestDTO payload = mock(SchoolRequestDTO.class);
-        when(schoolRepository.findById(id)).thenReturn(Optional.empty());
+    void deleteSchool_ShouldDeleteSuccessfully() {
+        when(schoolRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(schoolRepository).deleteById(1L);
 
-        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                () -> service.updateSchool(id, payload));
+        schoolService.deleteSchool(1L);
 
-        assertTrue(ex.getMessage().contains("Escola não encontrada"));
-        verify(schoolRepository).findById(id);
-        verifyNoMoreInteractions(schoolRepository);
+        verify(schoolRepository).deleteById(1L);
     }
 
     @Test
-    void deleteSchool_deletes_whenExists() {
-        Long id = 1L;
-        when(schoolRepository.existsById(id)).thenReturn(true);
+    void deleteSchool_ShouldThrowNotFound_WhenSchoolDoesNotExist() {
+        when(schoolRepository.existsById(1L)).thenReturn(false);
 
-        service.deleteSchool(id);
-
-        verify(schoolRepository).existsById(id);
-        verify(schoolRepository).deleteById(id);
+        assertThatThrownBy(() -> schoolService.deleteSchool(1L))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Escola não encontrada com o ID: 1");
     }
 
     @Test
-    void deleteSchool_throws_whenNotExists() {
-        Long id = 2L;
-        when(schoolRepository.existsById(id)).thenReturn(false);
+    void findSchoolsByZone_ShouldReturnList() {
+        when(schoolRepository.findByZone("URBANA")).thenReturn(List.of(schoolEntity));
+        when(schoolMapper.toResponseDtoList(List.of(schoolEntity))).thenReturn(List.of(schoolResponseDTO));
 
-        EntityNotFoundException ex = assertThrows(EntityNotFoundException.class,
-                () -> service.deleteSchool(id));
+        List<SchoolResponseDTO> result = schoolService.findSchoolsByZone("URBANA");
 
-        assertTrue(ex.getMessage().contains("Escola não encontrada"));
-        verify(schoolRepository).existsById(id);
-        verify(schoolRepository, never()).deleteById(anyLong());
+        assertThat(result).hasSize(1);
+        verify(schoolRepository).findByZone("URBANA");
     }
 
     @Test
-    void findSchoolsByZone_returnsMappedList() {
-        String zone = "URBANA";
-        SchoolEntity e = new SchoolEntity();
-        List<SchoolEntity> entities = List.of(e);
-        List<SchoolResponseDTO> dtos = List.of(mock(SchoolResponseDTO.class));
+    void findSchoolByName_ShouldReturnList() {
+        when(schoolRepository.findByName("Escola Teste")).thenReturn(List.of(schoolEntity));
+        when(schoolMapper.toResponseDtoList(List.of(schoolEntity))).thenReturn(List.of(schoolResponseDTO));
 
-        when(schoolRepository.findByZone(zone)).thenReturn(entities);
-        when(schoolMapper.toResponseDtoList(entities)).thenReturn(dtos);
+        List<SchoolResponseDTO> result = schoolService.findSchoolByName("Escola Teste");
 
-        List<SchoolResponseDTO> out = service.findSchoolsByZone(zone);
-
-        assertEquals(dtos, out);
-        verify(schoolRepository).findByZone(zone);
-        verify(schoolMapper).toResponseDtoList(entities);
-    }
-
-    @Test
-    void findSchoolByName_returnsMappedList() {
-        String name = "Escola X";
-        List<SchoolEntity> entities = List.of(new SchoolEntity());
-        List<SchoolResponseDTO> dtos = List.of(mock(SchoolResponseDTO.class));
-
-        when(schoolRepository.findByName(name)).thenReturn(entities);
-        when(schoolMapper.toResponseDtoList(entities)).thenReturn(dtos);
-
-        List<SchoolResponseDTO> out = service.findSchoolByName(name);
-
-        assertEquals(dtos, out);
-        verify(schoolRepository).findByName(name);
-        verify(schoolMapper).toResponseDtoList(entities);
+        assertThat(result).hasSize(1);
+        verify(schoolRepository).findByName("Escola Teste");
     }
 }

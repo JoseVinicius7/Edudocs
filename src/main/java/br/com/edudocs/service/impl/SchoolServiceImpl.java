@@ -4,13 +4,16 @@ import br.com.edudocs.api.model.SchoolRequestDTO;
 import br.com.edudocs.api.model.SchoolResponseDTO;
 import br.com.edudocs.entity.AddressEntity;
 import br.com.edudocs.entity.SchoolEntity;
+import br.com.edudocs.exception.BadRequestException;
+import br.com.edudocs.exception.ConflictException;
+import br.com.edudocs.exception.NotFoundException;
 import br.com.edudocs.mapper.AddressMapper;
 import br.com.edudocs.mapper.SchoolMapper;
 import br.com.edudocs.repository.AddressRepository;
 import br.com.edudocs.repository.SchoolRepository;
 import br.com.edudocs.service.SchoolService;
 import br.com.edudocs.utils.BaseLogger.BaseServiceLogger;
-import jakarta.persistence.EntityNotFoundException;
+import br.com.edudocs.utils.Zona;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -82,7 +85,8 @@ public class SchoolServiceImpl implements SchoolService {
      *
      * @param payload dados da escola a ser criada
      * @return {@link SchoolResponseDTO} criado
-     * @throws EntityNotFoundException se o endereço não estiver presente
+     * @throws BadRequestException quando dados obrigatórios/zone são inválidos
+     * @throws ConflictException quando já existe escola com o mesmo nome
      */
     @Override
     public SchoolResponseDTO createSchool(SchoolRequestDTO payload) {
@@ -91,9 +95,17 @@ public class SchoolServiceImpl implements SchoolService {
         return logger.logExecution(method, () -> {
             log.info("{} - creating school - name={} - zone={}", method, payload.getName(), payload.getZone());
 
-            if (payload.getAddress() == null) {
-                log.warn("{} - address is required for school creation", method);
-                throw new EntityNotFoundException("Endereço obrigatório.");
+            if (payload.getName() == null || payload.getName().trim().isEmpty()) {
+                throw new BadRequestException("Nome da escola é obrigatório.");
+            }
+
+            String normalizedZone = payload.getZone() != null ? Zona.normalize(payload.getZone().getValue()) : null;
+            if (normalizedZone == null || !Zona.isValid(normalizedZone)) {
+                throw new BadRequestException("Zona inválida. Valores aceitos: RURAL, URBANA.");
+            }
+
+            if (schoolRepository.existsByName(payload.getName().trim())) {
+                throw new ConflictException("Já existe uma escola com este nome.");
             }
 
             SchoolEntity school = schoolMapper.toEntity(payload);
@@ -103,11 +115,14 @@ public class SchoolServiceImpl implements SchoolService {
                 school.setAddress(persistedAddress);
             }
 
+            school.setZone(normalizedZone);
+
             SchoolEntity saved = schoolRepository.save(school);
             log.info("{} - school saved - id={}", method, saved.getId());
             return schoolMapper.toResponseDto(saved);
         });
     }
+
 
     /**
      * Atualiza os dados de uma escola existente.
@@ -115,7 +130,7 @@ public class SchoolServiceImpl implements SchoolService {
      * @param id      identificador da escola
      * @param payload dados atualizados
      * @return {@link SchoolResponseDTO} atualizado
-     * @throws EntityNotFoundException se a escola não for encontrada
+     * @throws NotFoundException se a escola não for encontrada
      */
     @Override
     public SchoolResponseDTO updateSchool(Long id, SchoolRequestDTO payload) {
@@ -150,7 +165,7 @@ public class SchoolServiceImpl implements SchoolService {
             }
 
             log.info("{} - school not found - id={}", method, id);
-            throw new EntityNotFoundException("Escola não encontrada com o ID: " + id);
+            throw new NotFoundException("Escola não encontrada com o ID: " + id);
         });
     }
 
@@ -158,7 +173,7 @@ public class SchoolServiceImpl implements SchoolService {
      * Exclui uma escola pelo ‘ID’.
      *
      * @param id identificador da escola
-     * @throws EntityNotFoundException se a escola não for encontrada
+     * @throws NotFoundException se a escola não for encontrada
      */
     @Override
     public void deleteSchool(Long id) {
@@ -170,7 +185,7 @@ public class SchoolServiceImpl implements SchoolService {
             boolean exists = schoolRepository.existsById(id);
             if (!exists) {
                 log.info("{} - school not found to delete - id={}", method, id);
-                throw new EntityNotFoundException("Escola não encontrada com o ID: " + id);
+                throw new NotFoundException("Escola não encontrada com o ID: " + id);
             }
 
             schoolRepository.deleteById(id);
@@ -220,14 +235,14 @@ public class SchoolServiceImpl implements SchoolService {
      * @param addressId ‘ID’ do endereço
      * @param method    nome do metodo para ‘log’
      * @return {@link AddressEntity} encontrado
-     * @throws EntityNotFoundException se não encontrado
+     * @throws NotFoundException se não encontrado
      */
     private AddressEntity loadExistingAddress(Long addressId, String method) {
         log.info("{} - resolving existing address - id={}", method, addressId);
         return addressRepository.findById(addressId)
                 .orElseThrow(() -> {
                     log.warn("{} - address not found - id={}", method, addressId);
-                    return new EntityNotFoundException("Endereço não encontrado: id=" + addressId);
+                    return new NotFoundException("Endereço não encontrado: id=" + addressId);
                 });
     }
 }
