@@ -1,4 +1,4 @@
-package br.com.edudocs.utils;
+package br.com.edudocs.utils.enums;
 
 import java.text.Normalizer;
 import java.util.Arrays;

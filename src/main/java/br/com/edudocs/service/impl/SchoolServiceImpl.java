@@ -13,7 +13,7 @@ import br.com.edudocs.repository.AddressRepository;
 import br.com.edudocs.repository.SchoolRepository;
 import br.com.edudocs.service.SchoolService;
 import br.com.edudocs.utils.BaseLogger.BaseServiceLogger;
-import br.com.edudocs.utils.Zona;
+import br.com.edudocs.utils.enums.Zona;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

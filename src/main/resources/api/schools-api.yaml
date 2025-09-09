@@ -141,6 +141,290 @@ paths:
                   $ref: '#/components/schemas/SchoolResponse'
         '404':
           description: Não encontrada
+  # ... existing code ...
+  /api/employees:
+    post:
+      operationId: createEmployee
+      summary: Cria um novo funcionário
+      tags: [Employee]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeRequest'
+      responses:
+        '201':
+          description: Funcionário criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeResponse'
+    get:
+      operationId: findAllEmployees
+      summary: Lista todos os funcionários
+      tags: [Employee]
+      responses:
+        '200':
+          description: Lista de funcionários
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmployeeResponse'
+  /api/students:
+    post:
+      operationId: createStudent
+      summary: Cria um novo aluno
+      tags: [Student]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentRequest'
+      responses:
+        '201':
+          description: Aluno criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentResponse'
+    get:
+      operationId: findAllStudents
+      summary: Lista todos os alunos
+      tags: [Student]
+      responses:
+        '200':
+          description: Lista de alunos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentResponse'
+
+  /api/students/{id}:
+    get:
+      operationId: findStudentById
+      summary: Busca aluno por ID
+      tags: [Student]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Aluno encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentResponse'
+        '404':
+          description: Não encontrado
+    put:
+      operationId: updateStudent
+      summary: Atualiza um aluno
+      tags: [Student]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentRequest'
+      responses:
+        '200':
+          description: Aluno atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentResponse'
+        '404':
+          description: Não encontrado
+    delete:
+      operationId: deleteStudent
+      summary: Marca um aluno como inativo (soft delete)
+      tags: [Student]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Aluno marcado como inativo com sucesso
+
+  /api/students/school/{schoolId}:
+    get:
+      operationId: findStudentsBySchool
+      summary: Lista alunos por escola
+      tags: [Student]
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista de alunos da escola
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentResponse'
+
+  /api/students/status:
+    get:
+      operationId: findStudentsByStatus
+      summary: Lista alunos por status
+      tags: [Student]
+      parameters:
+        - in: query
+          name: status
+          required: true
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+      responses:
+        '200':
+          description: Lista de alunos por status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentResponse'
+
+  /api/students/name:
+    get:
+      operationId: findByStudentName
+      summary: Lista alunos por nome
+      tags: [Student]
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de alunos por nome
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StudentResponse'
+
+  /api/enrollments:
+    post:
+      operationId: createEnrollment
+      summary: Cria uma nova matrícula
+      tags: [Enrollment]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentRequest'
+      responses:
+        '201':
+          description: Matrícula criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentResponse'
+    get:
+      operationId: findAllEnrollments
+      summary: Lista todas as matrículas com filtros opcionais
+      tags: [Enrollment]
+      parameters:
+        - in: query
+          name: studentId
+          schema:
+            type: integer
+            format: int64
+          description: Filtra por ID do aluno
+        - in: query
+          name: schoolId
+          schema:
+            type: integer
+            format: int64
+          description: Filtra por ID da escola
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+          description: Filtra por status da matrícula
+      responses:
+        '200':
+          description: Lista de matrículas encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnrollmentResponse'
+  /api/enrollments/{id}:
+    put:
+      operationId: updateEnrollment
+      summary: Atualiza os dados de uma matrícula existente
+      tags: [Enrollment]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da matrícula a ser atualizada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentRequest'
+      responses:
+        '200':
+          description: Matrícula atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentResponse'
+        '404':
+          description: Matrícula não encontrada
+    delete:
+      operationId: deleteEnrollment
+      summary: Marca uma matrícula como inativa (soft delete)
+      tags: [Enrollment]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: ID da matrícula a ser deletada
+      responses:
+        '204':
+          description: Matrícula marcada como inativa com sucesso
 
 components:
   schemas:
@@ -165,7 +449,6 @@ components:
           type: string
         postalCode:
           type: string
-
 
     SchoolRequest:
       type: object
@@ -200,3 +483,161 @@ components:
           enum: [URBANA, RURAL]
         address:
           $ref: '#/components/schemas/Address'
+
+    Role:
+      type: object
+      description: "Role vinculada ao funcionário (mapeado para RoleEntity)"
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required:
+        - name
+
+    EmployeeResponse:
+      type: object
+      description: "Funcionário com possíveis múltiplas roles (mapeado para EmployeeEntity)"
+      properties:
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+
+    EmployeeRequest:
+      type: object
+      description: "Funcionário com possíveis múltiplas roles (mapeado para EmployeeEntity)"
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        contractType:
+          type: string
+        workload:
+          type: integer
+          format: int32
+          minimum: 1
+        attendance:
+          type: integer
+          format: int32
+          minimum: 0
+        schoolId:
+          type: integer
+          format: int64
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+      required:
+        - name
+        - contractType
+        - workload
+        - attendance
+        - schoolId
+
+    StudentRequest:
+      type: object
+      description: "DTO para criação/atualização de aluno"
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        schoolId:
+          type: integer
+          format: int64
+      required:
+        - name
+        - birthDate
+        - gender
+        - schoolId
+
+    StudentResponse:
+      type: object
+      description: "DTO de resposta de aluno"
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          maxLength: 255
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        schoolId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    EnrollmentRequest:
+      type: object
+      description: DTO para criação/atualização de matrícula
+      properties:
+        studentId:
+          type: integer
+          format: int64
+        schoolId:
+          type: integer
+          format: int64
+        gradeClass:
+          type: string
+        enrollmentDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+      required:
+        - studentId
+        - schoolId
+        - gradeClass
+        - enrollmentDate
+    EnrollmentResponse:
+      type: object
+      description: DTO de resposta de matrícula
+      properties:
+        id:
+          type: integer
+          format: int64
+        studentId:
+          type: integer
+          format: int64
+        schoolId:
+          type: integer
+          format: int64
+        gradeClass:
+          type: string
+        enrollmentDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
